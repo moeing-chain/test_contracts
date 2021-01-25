@@ -1634,6 +1634,8 @@ abstract contract ERC721 is Context, ERC165, IERC721, IERC721Metadata, IERC721En
 //    function _setBaseURI(string memory baseURI_) internal virtual {
 
 import "./libraries/ShortId.sol";
+import "./interfaces/IRegistry.sol";
+import "./interfaces/IMySpace.sol";
 
 contract BasicNFT is ERC721 {
     // record bidirectional mapping between shortId and full tokenId, to generate URI
@@ -1685,8 +1687,8 @@ contract BasicNFT is ERC721 {
         }
     }
 
-    function createTokenForDoodle(address to, uint256 tokenId) external {
-        require(tokenId2ShortId[tokenId] == 0, "DDL: Token already created");
+    function createToken(address to, uint256 tokenId) external {
+        require(tokenId2ShortId[tokenId] == 0, "Token already created");
         _safeMint(to, tokenId);
         _registerShortId(tokenId);
     }
