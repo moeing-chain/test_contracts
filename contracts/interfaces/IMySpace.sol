@@ -75,7 +75,7 @@ interface IMySpace is IERC20 {
     // Publish a new Ad. operator-only. Can delete an old Ad to save gas and reclaim coins at the same time.
     function pulishAd(string memory detail, uint numAudience, uint numRejector, uint coinsPerAudience, address coinType, uint[] calldata bloomfilter, uint endTime, uint64 deleteOldId) external returns (uint64);
     // Click an Ad and express whether I am interested. followers-only
-    function clickAd(uint id, bool rejected) external;
+    function clickAd(uint id, bool interested) external;
     // Delete an old Ad to save gas and reclaim coins
     function deleteAd(uint id) external;
     // Returns the Id of the next Ad
