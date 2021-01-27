@@ -73,7 +73,7 @@ interface IMySpace is IERC20 {
     function getNextVoteId() external view returns (uint64);
 
     // Publish a new Ad. operator-only. Can delete an old Ad to save gas and reclaim coins at the same time.
-    function pulishAd(string memory detail, uint numAudience, uint numRejector, uint coinsPerAudience, address coinType, uint[] calldata bloomfilter, uint endTime, uint64 deleteOldId) external returns (uint64);
+    function publishAd(string memory detail, uint numAudience, uint numRejector, uint coinsPerAudience, address coinType, uint[] calldata bloomfilter, uint endTime, uint64 deleteOldId) external returns (uint64);
     // Click an Ad and express whether I am interested. followers-only
     function clickAd(uint id, bool interested) external;
     // Delete an old Ad to save gas and reclaim coins
