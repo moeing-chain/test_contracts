@@ -10,6 +10,7 @@ contract Registry is IRegistry {
     mapping(bytes32 => address) private operatorTable;
     mapping(bytes32 => address) private newOperatorTable;
     mapping(address /*owner*/ => address) private allowanceTable;
+    mapping(address => address) public spaceTable;
 
     function Registry(){}
 
@@ -88,5 +89,11 @@ contract Registry is IRegistry {
     function getOperatorByOwner(address owner) external view returns (address) {
         bytes32 accName = accountTable[owner];
         return operatorTable[accName];
+    }
+
+    //todo: add this
+    // Create Space, only owner
+    function newSpace() external view returns (address) {
+        
     }
 }
