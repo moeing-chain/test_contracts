@@ -93,7 +93,7 @@ contract Registry is IRegistry {
 
     //todo: add this
     // Create Space, only owner
-    function newSpace() external view returns (address) {
-        
+    function newSpace() external {
+        //call Space contract
     }
 }

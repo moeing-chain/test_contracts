@@ -14,26 +14,31 @@ contract Space is IMySpace {
         owner = msg.sender;
     }
 
-    event NewThread(uint64 indexed threadId, bytes content);
-    // In a new thread with 'threadId', accountA and accountB were mentioned (@)
-    event Notify(uint64 indexed threadId, bytes32 indexed accountA, bytes32 indexed accountB);
     // Someone commented in a thread with 'threadId', at the same time, she also rewards some coins to 'rewardTo'
     event NewComment(uint64 indexed threadId, address indexed commenter, bytes content, address indexed rewardTo, uint rewardAmount, address rewardCoin);
 
     // Create a new thread. Only the owner can call this function. Returns the new thread's id
     function createNewThread(bytes memory content, bytes32[] calldata notifyList) external returns (uint64) {
+        require(msg.sender == owner);
         uint64 threadId = nextThreadId;
         emit NewThread(threadId, content);
-        for (uint i = 0; i < notifyList.length; i++) {
-
+        uint length = notifyList.length;
+        for (uint i = 0; i < (length + 1) / 2; i++) {
+            if (2 * i + 1 == length) {
+                emit Notify(threadId, notifyList[2 * i], address(0));
+            } else {
+                emit Notify(threadId, notifyList[2 * i], notifyList[2 * i + 1]);
+            }
         }
-        emit Notify(threadId, )
         nextThreadId++;
         return threadId;
     }
 
     // Add a comment under a thread. Only the owner and the followers can call this function
-    function comment(uint64 threadId, bytes memory content, address rewardTo, uint rewardAmount, address rewardCoin) external;
+    function comment(uint64 threadId, bytes memory content, address rewardTo, uint rewardAmount, address rewardCoin) external {
+
+    }
+    
     // Returns the Id of the next thread
     function getNextThreadId() external returns (uint64);
 
