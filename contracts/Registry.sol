@@ -2,6 +2,7 @@
 pragma solidity 0.6.12;
 
 import "./interfaces/IRegistry.sol";
+import "./Space.sol";
 
 contract Registry is IRegistry {
 

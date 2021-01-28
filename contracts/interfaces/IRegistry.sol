@@ -28,5 +28,7 @@ interface IRegistry {
     function getOwnerAndOperatorByAccountName(bytes32 accountName) external view returns (address, address);
     // Given the accountName, query the newly-appointed operator
     function getNewOperator(bytes32 accountName) external view returns (address);
+    // Get operator by owner
+    function getOperatorByOwner(address owner) external view returns (address);
 }
 

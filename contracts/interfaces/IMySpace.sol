@@ -21,7 +21,8 @@ interface IMySpace is IERC20 {
     event ClickAd(uint64 indexed id, address indexed audience, bool interested);
 
     // Appoint 'operator' as the new operator. Only the owner can call this function
-    function appointNewOperator(address operator) external returns (bool);
+    //todo: no need, do this in register
+    //function appointNewOperator(address operator) external;
     // Switch to the newly-appointed operator. Only the new operator can call this function
     function switchToNewOperator() external;
 
@@ -30,14 +31,15 @@ interface IMySpace is IERC20 {
     // Get current Operator
     function getOperator() external returns (address);
     // Get the newly-appointed operator.
-    function getNewOperator() external returns (address);
+    //todo: no need, this state variable is in register
+    //function getNewOperator() external returns (address);
 
     // Create a new thread. Only the owner can call this function. Returns the new thread's id
     function createNewThread(bytes memory content, bytes32[] calldata notifyList) external returns (uint64);
     // Add a comment under a thread. Only the owner and the followers can call this function
     function comment(uint64 threadId, bytes memory content, address rewardTo, uint rewardAmount, address rewardCoin) external;
     // Returns the Id of the next thread
-    function getNextThreadId() external returns (uint64);
+    function getNextThreadId() external view returns (uint64);
 
     // Add the accounts in badIdList into blacklist. operator-only.
     function addToBlacklist(bytes32[] calldata badIdList) external;
@@ -46,9 +48,10 @@ interface IMySpace is IERC20 {
     // Add another contract as blacklist agent. operator-only.
     function addBlacklistAgent(address agent) external;
     // Stop taking another contract as blacklist agent. operator-only.
-    function removeBlacklistAgent(address agent) external;
+    //function removeBlacklistAgent(address agent) external;
+    function removeBlacklistAgent() external;
     // Query wether an id is in the black list
-    function isInBlacklist(bytes32 id) external returns (bool);
+    function isInBlacklist(bytes32 id) public returns (bool);
     // Query the content of the black list, with paging support.
     function getBlacklist(uint start, uint count) external returns (bytes32[] memory);
 
@@ -59,14 +62,14 @@ interface IMySpace is IERC20 {
     // Query all the followers, with paging support.
     function getFollowers(uint start, uint count) external returns (bytes32[] memory);
     // Set the warmup time for new followers: how many hours after becoming a follower can she comment? operator-only
-    function setWarmupTime(uint numHours) external;
+    function setWarmupTime(uint numSeconds) external;
     // Query the warmup time for new followers
     function getWarmupTime() external view returns (uint);
 
     // Start a new vote. operator-only. Can delete an old vote to save gas.
-    function startVote(string memory detail, uint optionCount, uint endTime, uint64 deleteOldId) external returns (uint64);
+    function startVote(string memory detail, uint8 optionCount, uint8 voteConfig, uint endTime, uint64 deleteOldId) external returns (uint64);
     // Vote for an option. followers-only.
-    function vote(uint voteId, uint optionId, uint coinAmount) external;
+    function vote(uint64 voteId, uint8 optionId, uint coinAmount) external;
     // Return the amounts of voted coins for each option.
     function getVoteResult(uint voteId) external view returns (uint[] memory);
     // Returns the Id of the next vote
