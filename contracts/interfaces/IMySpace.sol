@@ -25,7 +25,7 @@ interface IMySpace is IERC20 {
     //function appointNewOperator(address operator) external;
     // Switch to the newly-appointed operator. Only the new operator can call this function
     function switchToNewOperator() external;
-
+    function switchToNewOwner(address _owner) external;
     // Get the owner of this contract
     function getOwner() external returns (address);
     // Get current Operator

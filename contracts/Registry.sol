@@ -4,14 +4,14 @@ pragma solidity 0.6.12;
 import "./interfaces/IRegistry.sol";
 import "./Space.sol";
 
-contract Registry is IRegistry {
+contract RegistryLogic is IRegistry {
 
     mapping(address => bytes32) private ownerToName;
     mapping(bytes32 => address) private nameToOwner;
     mapping(bytes32 => address) private nameToOperator;
     mapping(bytes32 => address) private nameToNewOperator;
     mapping(address /*owner*/ => address) private ownerToApprovedContract;
-    mapping(address => address) public spaceTable;
+    mapping(bytes32 => address) public spaceTable;
 
     function Registry(){}
 
@@ -24,6 +24,8 @@ contract Registry is IRegistry {
             delete nameToNewOperator[oldAccount];
             nameToOwner[accountName] = msg.sender;
             nameToOperator[accountName] = operator;
+            address spaceAddr = newSpace(msg.sender, accountName, operator, address(0));
+            spaceTable[accountName] = spaceAddr;
             emit Register(accountName, msg.sender, operator);
             return true;
         }
@@ -41,6 +43,10 @@ contract Registry is IRegistry {
         require(nameToNewOperator[accountName] == msg.sender);
         nameToOperator[accountName] = msg.sender;
         delete nameToNewOperator[accountName];
+        address space = spaceTable[accountName];
+        if (space != address(0)) {
+            IMySpace(space).switchToNewOperator();
+        }
         emit ChangeOperator(accountName, msg.sender);
     }
 
@@ -61,6 +67,10 @@ contract Registry is IRegistry {
         if (tmp != address(0)) {
             delete ownerToApprovedContract[msg.sender];
             ownerToApprovedContract[newOwner] = tmp;
+        }
+        address space = spaceTable[accountName];
+        if (space != address(0)) {
+            IMySpace(space).switchToNewOwner(newOwner);
         }
     }
 
@@ -95,7 +105,19 @@ contract Registry is IRegistry {
 
     //todo: add this
     // Create Space, only owner
-    function newSpace() external {
+    function newSpace(byte32 accountName, address owner, address operator, address voteCoin) internal returns (address) {
         //call Space contract
+        byte32 salt = keccak256(bytes32(accountName));
+        address space = new Space{salt : salt}(owner, operator, address(this), voteCoin);
+        return space;
+    }
+
+    //todo: add this
+    function getSpaceByAccountName(byte32 accountName) external view returns (address) {
+        return spaceTable[accountName];
+    }
+
+    function getSpaceByOwner(address owner) external view returns (address) {
+        return spaceTable[accountName];
     }
 }
