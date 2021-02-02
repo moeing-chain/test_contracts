@@ -5,11 +5,10 @@ import "./interfaces/IMySpace.sol";
 import "./interfaces/IRegistry.sol";
 import "./interfaces/IBlackListAgent.sol";
 
-contract Space is IMySpace {
+contract SpaceLogic is IMySpace {
 
     address private owner;
-    address private operator;
-    address private register;
+    address private chirp;
     address private voteCoin;
     uint private warmupTime;
     uint64 public nextThreadId;
@@ -25,64 +24,46 @@ contract Space is IMySpace {
     mapping(uint64/*vote id*/ => uint /*64bit end time | 8bit voteConfig | 8bit optionCount*/) voteTable;
     mapping(byte32 => uint) voteTallyTable;
 
-    function Space(address _owner, address _operator, address _register, address _voteCoin){
-        owner = _owner;
-        operator = _operator;
-        register = _register;
-        voteCoin = _voteCoin;
-    }
+    function SpaceLogic(){}
 
     //todo: only call by register, when change owner
     function switchToNewOwner(address _owner) external {
         require(msg.sender == register);
         owner = _owner;
     }
-
-    // Switch to the newly-appointed operator. Only the new operator can call this function
-    //todo: only register, because register has operator also
-    function switchToNewOperator() external {
-        require(msg.sender == register);
-        operator = IRegistry(register).getOperatorByOwner(owner);
-    }
-
     // Get the owner of this contract
     function getOwner() external returns (address) {
         return owner;
     }
-    // Get current Operator
-    function getOperator() external returns (address) {
-        return operator;
-    }
-
     // Add the accounts in badIdList into blacklist. operator-only.
     function addToBlacklist(bytes32[] calldata badIdList) external {
-        require(msg.sender == operator);
+        require(msg.sender == owner);
         for (uint i = 0; i < badIdList.length; i++) {
             byte32 acc = badIdList[i];
             if (blackList[acc] != true) {
                 blackList[acc] = true;
-                (, address operator) = IRegistry(register).getOwnerAndOperatorByAccountName(acc);
-                delete immatureFollowerTable[operator];
-                delete followerTable[operator];
+                address owner = IRegistry(chirp).getOwnerByAccountName(acc);
+                delete immatureFollowerTable[owner];
+                delete followerTable[owner];
             }
         }
     }
-    // Remove the accounts in goodIdList from blacklist. operator-only.
+    // Remove the accounts in goodIdList from blacklist. owner-only.
     function removeFromBlacklist(bytes32[] calldata goodIdList) external {
-        require(msg.sender == operator);
+        require(msg.sender == owner);
         for (uint i = 0; i < goodIdList.length; i++) {
             delete blackList[goodIdList[i]];
         }
     }
-    // Add another contract as blacklist agent. operator-only.
+    // Add another contract as blacklist agent. owner-only.
     function addBlacklistAgent(address agent) external {
-        require(msg.sender == operator);
+        require(msg.sender == owner);
         blackListAgent = agent;
     }
-    // Stop taking another contract as blacklist agent. operator-only.
+    // Stop taking another contract as blacklist agent. owner-only.
     //todo: only support one agent now;
     function removeBlacklistAgent() external {
-        require(msg.sender == operator);
+        require(msg.sender == owner);
         blackListAgent = address(0);
     }
     // Query wether an acc is in the black list
@@ -146,20 +127,19 @@ contract Space is IMySpace {
     function getFollowers(uint start, uint count) external returns (bytes32[] memory) {
         return byte32[](0);
     }
-    // Set the warmup time for new followers: how many hours after becoming a follower can she comment? operator-only
+    // Set the warmup time for new followers: how many hours after becoming a follower can she comment? owner-only
     //todo: change numHours to numSeconds
     function setWarmupTime(uint numSeconds) external {
-        require(msg.sender == operator && numSeconds != 0);
+        require(msg.sender == owner && numSeconds != 0);
         warmupTime = numSeconds;
     }
     // Query the warmup time for new followers
     function getWarmupTime() external view returns (uint) {
         return warmupTime;
     }
-    // Start a new vote. operator-only. Can delete an old vote to save gas.
+    // Start a new vote. owner-only. Can delete an old vote to save gas.
     function startVote(string memory detail, uint8 optionCount, uint8 voteConfig, uint endTime, uint64 deleteOldId) external returns (uint64) {
-        //todo: change to operator
-        require(msg.sender == operator && endTime > block.timestamp);
+        require(msg.sender == owner && endTime > block.timestamp);
         uint64 voteId = nextVoteId;
         if (deleteOldId < voteId) {
             //todo: deleteOldId may not end
@@ -222,7 +202,7 @@ contract Space is IMySpace {
         return nextVoteId;
     }
 
-    // Publish a new Ad. operator-only. Can delete an old Ad to save gas and reclaim coins at the same time.
+    // Publish a new Ad. owner-only. Can delete an old Ad to save gas and reclaim coins at the same time.
     //todo:
     function publishAd(string memory detail, uint numAudience, uint numRejector, uint coinsPerAudience, address coinType, uint[] calldata bloomfilter, uint endTime, uint64 deleteOldId) external returns (uint64) {
         uint64 id = nextAdId;
@@ -242,12 +222,38 @@ contract Space is IMySpace {
         return nextAdId;
     }
 
-    //todo: add this
     function setVoteCoin(address coin) external {
         voteCoin = coin;
     }
 
     function getVoteCoin() external view returns (address) {
         return voteCoin;
+    }
+}
+
+contract Space {
+    address private owner;
+    address private chirp;
+
+    function Space(address _owner, address _chirp){
+        owner = _owner;
+        chirp = _chirp;
+    }
+
+    receive() external payable {}
+
+    fallback() payable external {
+        address space = IRegistry(chirp).getSpaceLogic();
+        assembly {
+            let ptr := mload(0x40)
+            let size := calldatasize()
+            calldatacopy(ptr, 0, size)
+            let result := delegatecall(gas(), space, ptr, size, 0, 0)
+            size := returndatasize()
+            returndatacopy(ptr, 0, size)
+            switch result
+            case 0 {revert(ptr, size)}
+            default {return (ptr, size)}
+        }
     }
 }
