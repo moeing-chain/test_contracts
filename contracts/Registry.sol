@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.6.12;
+pragma solidity 0.8.1;
 
 import "./interfaces/IRegistry.sol";
 import "./Space.sol";
@@ -11,11 +11,11 @@ contract RegistryLogic is IRegistry {
         uint64 startTime;
     }
 
-    address private owner;
-    address private register; //placeholder
-    uint64 latencyTime;
-    address private spaceLogic;
-    address private defaultGuardian;
+    address private owner; //placeholder
+    address private registerLogic; //placeholder
+    address private defaultGuardian; //placeholder
+    address private spaceLogic; //placeholder
+    uint64 latencyTime; //placeholder
     mapping(address => bytes32) private ownerToName;
     mapping(bytes32 => address) private nameToOwner;
     mapping(address => address) private ownerToSuccessor;
@@ -24,16 +24,14 @@ contract RegistryLogic is IRegistry {
     mapping(address => bakAddressInfo) private ownerToGuardianBak;
     mapping(bytes32 => address) public spaceTable;
 
-    function Registry(){}
-
     //todo: support change name
-    function register(bytes32 accountName, address successor, address guardian) external returns (bool) {
+    function register(bytes32 accountName, address successor, address guardian) external override returns (bool) {
         if (nameToOwner[accountName] == address(0)) {
             nameToOwner[accountName] = msg.sender;
             ownerToName[msg.sender] = accountName;
             ownerToSuccessor[msg.sender] = successor;
             ownerToGuardian[msg.sender] = guardian;
-            address spaceAddr = newSpace(msg.sender, accountName);
+            address spaceAddr = newSpace(accountName, msg.sender);
             spaceTable[accountName] = spaceAddr;
             emit Register(accountName, msg.sender, successor, guardian);
             return true;
@@ -42,7 +40,7 @@ contract RegistryLogic is IRegistry {
     }
 
     //by owner, guardian
-    function switchOwner(bytes32 accountName) external {
+    function switchOwner(bytes32 accountName) external override {
         address _owner = nameToOwner[accountName];
         bakAddressInfo memory guardianInfo = ownerToGuardianBak[_owner];
         address _guardian;
@@ -53,7 +51,7 @@ contract RegistryLogic is IRegistry {
         } else {
             _guardian = ownerToGuardian[_owner];
         }
-        require(_owner != address(0) && (_owner == msg.sender || _guardian == msg.sender || (_guardian == 0 && defaultGuardian == msg.sender)));
+        require(_owner != address(0) && (_owner == msg.sender || _guardian == msg.sender || (_guardian == address(0) && defaultGuardian == msg.sender)));
         bakAddressInfo memory info = ownerToSuccessorBak[_owner];
         address _successor;
         if (info.startTime > 0 && block.timestamp > latencyTime + info.startTime) {
@@ -72,64 +70,66 @@ contract RegistryLogic is IRegistry {
         emit SwitchOwner(accountName, _successor);
     }
 
-    function setSuccessor(address _successor) external {
+    function setSuccessor(address _successor) external override {
         bakAddressInfo memory info;
         info.bakAddress = _successor;
-        info.startTime = block.timestamp;
+        info.startTime = uint64(block.timestamp);
         ownerToSuccessorBak[msg.sender] = info;
     }
 
-    function setGuardian(address _guardian) external {
+    function setGuardian(address _guardian) external override {
         bakAddressInfo memory info;
         info.bakAddress = _guardian;
-        info.startTime = block.timestamp;
+        info.startTime = uint64(block.timestamp);
         ownerToGuardianBak[msg.sender] = info;
     }
 
     // Given the owner's address, query the corresponding accountName
-    function getAccountNameByOwner(address owner) external view returns (bytes32) {
-        return ownerToName[owner];
+    function getAccountNameByOwner(address _owner) external view override returns (bytes32) {
+        return ownerToName[_owner];
     }
 
     // Given the accountName, query the addresses of the owner and operator
-    function getOwnerByAccountName(bytes32 accountName) external view returns (address) {
+    function getOwnerByAccountName(bytes32 accountName) external view override returns (address) {
         return nameToOwner[accountName];
     }
 
     // Given the accountName, query the newly-appointed operator
-    function getSuccessor(address owner) external view returns (address) {
-        return ownerToSuccessor[owner];
+    function getSuccessor(address _owner) external view override returns (address) {
+        return ownerToSuccessor[_owner];
     }
 
-    function getGuardian(address owner) external view returns (address) {
-        return ownerToGuardian[owner];
+    function getGuardian(address _owner) external view override returns (address) {
+        return ownerToGuardian[_owner];
     }
 
-    function getDefaultGuardian() external view returns (address) {
+    function getDefaultGuardian() external view override returns (address) {
         return defaultGuardian;
     }
 
-    function setSpace(address _newLogic) external {
+    function setSpace(address _newLogic) external override {
         require(msg.sender == owner);
         spaceLogic = _newLogic;
     }
 
-    function getSpaceLogic() external view returns (address) {
-        return spaceImpl;
+    function getSpaceLogic() external view override returns (address) {
+        return spaceLogic;
     }
 
     // Create Space, only owner
-    function newSpace(byte32 accountName, address _owner) internal returns (address) {
+    function newSpace(bytes32 accountName, address _owner) internal returns (address) {
         //call Space contract
-        byte32 salt = keccak256(bytes32(accountName));
-        return new Space{salt : salt}(_owner, address(this));
+        bytes32 salt = keccak256(abi.encode(accountName));
+        Space space = new Space{salt : salt}(_owner, address(this));
+        return address(space);
     }
 
-    function getSpaceByAccountName(byte32 accountName) external view returns (address) {
+    function getSpaceByAccountName(bytes32 accountName) external view override returns (address) {
         return spaceTable[accountName];
     }
 
-    function getSpaceByOwner(address owner) external view returns (address) {
+    function getSpaceByOwner(address _owner) external view override returns (address) {
+        bytes32 accountName = ownerToName[_owner];
         return spaceTable[accountName];
     }
 }

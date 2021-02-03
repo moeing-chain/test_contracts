@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.6.12;
+pragma solidity 0.8.1;
 
 interface IRegistry {
     event Register(bytes32 indexed accountName, address indexed owner, address successor, address guardian);
@@ -19,7 +19,6 @@ interface IRegistry {
     function getGuardian(address owner) external view returns (address);
     function getDefaultGuardian() external view returns (address);
     function getSpaceLogic() external view returns (address);
-    function getSpaceByAccountName(byte32 accountName) external view returns (address);
+    function getSpaceByAccountName(bytes32 accountName) external view returns (address);
     function getSpaceByOwner(address owner) external view returns (address);
 }
-

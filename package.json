@@ -1,0 +1,22 @@
+{
+  "name": "std_contracts",
+  "version": "1.0.0",
+  "description": "Some standard contracts for moeing-chain",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/moeing-chain/std_contracts.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/moeing-chain/std_contracts/issues"
+  },
+  "homepage": "https://github.com/moeing-chain/std_contracts#readme"
+}

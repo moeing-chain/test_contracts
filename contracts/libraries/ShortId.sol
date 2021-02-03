@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.6.12;
+pragma solidity 0.8.1;
 
 // File: contracts/utils/Strings.sol
 
@@ -27,7 +27,7 @@ library Strings {
         uint256 index = digits - 1;
         temp = value;
         while (temp != 0) {
-            buffer[index--] = byte(uint8(48 + temp % 10));
+            buffer[index--] = bytes1(uint8(48 + temp % 10));
             temp /= 10;
         }
         return string(buffer);
@@ -49,11 +49,11 @@ library ShortId {
     function shortIdToURI(uint64 id) internal pure returns (string memory) {
         bytes memory buffer = new bytes(3);
         uint high16 = uint(id >> 32) & ((1<<16)-1);
-        buffer[2] = byte(uint8(65 + high16 % 26));
+        buffer[2] = bytes1(uint8(65 + high16 % 26));
         high16 = high16 / 26;
-        buffer[1] = byte(uint8(65 + high16 % 26));
+        buffer[1] = bytes1(uint8(65 + high16 % 26));
         high16 = high16 / 26;
-        buffer[0] = byte(uint8(65 + high16));
+        buffer[0] = bytes1(uint8(65 + high16));
         string memory s = Strings.toString(uint(uint32(id)));
         return string(abi.encodePacked(buffer, s));
     }

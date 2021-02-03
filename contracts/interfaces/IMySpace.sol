@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.6.12;
+pragma solidity 0.8.1;
 import "./IERC20.sol";
 
-interface IMySpace is IERC20 {
+interface IMySpace {
     // A new thread was created.
     event NewThread(uint64 indexed threadId, bytes content);
     // In a new thread with 'threadId', accountA and accountB were mentioned (@)
@@ -20,19 +20,10 @@ interface IMySpace is IERC20 {
     // An 'audience' clicked at an Ad with 'id' and expressed whether she is interested. If she is not interested, she gets some coins for compensation.
     event ClickAd(uint64 indexed id, address indexed audience, bool interested);
 
-    // Appoint 'operator' as the new operator. Only the owner can call this function
-    //todo: no need, do this in register
-    //function appointNewOperator(address operator) external;
-    // Switch to the newly-appointed operator. Only the new operator can call this function
-    function switchToNewOperator() external;
     function switchToNewOwner(address _owner) external;
     // Get the owner of this contract
-    function getOwner() external returns (address);
-    // Get current Operator
-    function getOperator() external returns (address);
-    // Get the newly-appointed operator.
-    //todo: no need, this state variable is in register
-    //function getNewOperator() external returns (address);
+    function getOwner() external view returns (address);
+
 
     // Create a new thread. Only the owner can call this function. Returns the new thread's id
     function createNewThread(bytes memory content, bytes32[] calldata notifyList) external returns (uint64);
@@ -51,16 +42,16 @@ interface IMySpace is IERC20 {
     //function removeBlacklistAgent(address agent) external;
     function removeBlacklistAgent() external;
     // Query wether an id is in the black list
-    function isInBlacklist(bytes32 id) public returns (bool);
+    function isInBlacklist(bytes32 id) external returns (bool);
     // Query the content of the black list, with paging support.
-    function getBlacklist(uint start, uint count) external returns (bytes32[] memory);
+    //function getBlacklist(uint start, uint count) external returns (bytes32[] memory);
 
     // Follow this contract's owner.
     function follow() external;
     // Unfollow this contract's owner.
     function unfollow() external;
     // Query all the followers, with paging support.
-    function getFollowers(uint start, uint count) external returns (bytes32[] memory);
+    //function getFollowers(uint start, uint count) external returns (bytes32[] memory);
     // Set the warmup time for new followers: how many hours after becoming a follower can she comment? operator-only
     function setWarmupTime(uint numSeconds) external;
     // Query the warmup time for new followers
@@ -71,17 +62,17 @@ interface IMySpace is IERC20 {
     // Vote for an option. followers-only.
     function vote(uint64 voteId, uint8 optionId, uint coinAmount) external;
     // Return the amounts of voted coins for each option.
-    function getVoteResult(uint voteId) external view returns (uint[] memory);
+    function getVoteResult(uint64 voteId) external view returns (uint[] memory);
     // Returns the Id of the next vote
     function getNextVoteId() external view returns (uint64);
 
     // Publish a new Ad. operator-only. Can delete an old Ad to save gas and reclaim coins at the same time.
-    function publishAd(string memory detail, uint numAudience, uint numRejector, uint coinsPerAudience, address coinType, uint[] calldata bloomfilter, uint endTime, uint64 deleteOldId) external returns (uint64);
-    // Click an Ad and express whether I am interested. followers-only
-    function clickAd(uint id, bool interested) external;
-    // Delete an old Ad to save gas and reclaim coins
-    function deleteAd(uint id) external;
-    // Returns the Id of the next Ad
-    function getNextAdId() external view returns (uint64);
+//    function publishAd(string memory detail, uint numAudience, uint numRejector, uint coinsPerAudience, address coinType, uint[] calldata bloomfilter, uint endTime, uint64 deleteOldId) external returns (uint64);
+//    // Click an Ad and express whether I am interested. followers-only
+//    function clickAd(uint id, bool interested) external;
+//    // Delete an old Ad to save gas and reclaim coins
+//    function deleteAd(uint id) external;
+//    // Returns the Id of the next Ad
+//    function getNextAdId() external view returns (uint64);
 }
 
