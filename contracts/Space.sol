@@ -3,9 +3,17 @@ pragma solidity 0.8.1;
 
 import "./interfaces/IMySpace.sol";
 import "./interfaces/IRegistry.sol";
+import "./interfaces/IERC20.sol";
 import "./interfaces/IBlackListAgent.sol";
 
 contract SpaceLogic is IMySpace {
+
+    struct AdInfo {
+        address coinType;
+        uint64 endTime;
+        uint numAudience;
+        uint coinsPerAudience;
+    }
 
     address private owner;
     address private chirp;
@@ -23,6 +31,7 @@ contract SpaceLogic is IMySpace {
     //voteConfig: 8bit, lsb represents if one vote only one ticket, silence vote coinAmount param;
     mapping(uint64/*vote id*/ => uint /*64bit end time | 8bit voteConfig | 8bit optionCount*/) voteTable;
     mapping(bytes32 => uint) voteTallyTable;
+    mapping(uint64/*ad id*/ => AdInfo) adTable;
 
     //todo: only call by register, when change owner
     function switchToNewOwner(address _owner) external override {
@@ -34,7 +43,7 @@ contract SpaceLogic is IMySpace {
         return owner;
     }
     // Add the accounts in badIdList into blacklist. operator-only.
-    function addToBlacklist(bytes32[] calldata badIdList) external override{
+    function addToBlacklist(bytes32[] calldata badIdList) external override {
         require(msg.sender == owner);
         for (uint i = 0; i < badIdList.length; i++) {
             bytes32 acc = badIdList[i];
@@ -47,20 +56,20 @@ contract SpaceLogic is IMySpace {
         }
     }
     // Remove the accounts in goodIdList from blacklist. owner-only.
-    function removeFromBlacklist(bytes32[] calldata goodIdList) external override{
+    function removeFromBlacklist(bytes32[] calldata goodIdList) external override {
         require(msg.sender == owner);
         for (uint i = 0; i < goodIdList.length; i++) {
             delete blackList[goodIdList[i]];
         }
     }
     // Add another contract as blacklist agent. owner-only.
-    function addBlacklistAgent(address agent) external override{
+    function addBlacklistAgent(address agent) external override {
         require(msg.sender == owner);
         blackListAgent = agent;
     }
     // Stop taking another contract as blacklist agent. owner-only.
     //todo: only support one agent now;
-    function removeBlacklistAgent() external override{
+    function removeBlacklistAgent() external override {
         require(msg.sender == owner);
         blackListAgent = address(0);
     }
@@ -86,18 +95,9 @@ contract SpaceLogic is IMySpace {
         return threadId;
     }
     // Add a comment under a thread. Only the owner and the followers can call this function
-    function comment(uint64 threadId, bytes memory content, address rewardTo, uint rewardAmount, address rewardCoin) external override{
-        bool valid;
-        if (msg.sender == owner) {
-            valid = true;
-        } else if (followerTable[msg.sender] == true) {
-            valid = true;
-        } else if (immatureFollowerTable[msg.sender] + warmupTime > block.timestamp) {
-            valid = true;
-            followerTable[msg.sender] = true;
-            delete immatureFollowerTable[msg.sender];
-        }
-        if (valid && threadId < nextThreadId) {
+    function comment(uint64 threadId, bytes memory content, address rewardTo, uint rewardAmount, address rewardCoin) external override {
+        require(msg.sender == owner || isFollower(msg.sender));
+        if (threadId < nextThreadId) {
             //todo: not check transfer result
             IERC20(rewardCoin).transferFrom(msg.sender, rewardTo, rewardAmount);
             emit NewComment(threadId, msg.sender, content, rewardTo, rewardAmount, rewardCoin);
@@ -108,12 +108,12 @@ contract SpaceLogic is IMySpace {
         return nextThreadId;
     }
     // Follow this contract's owner.
-    function follow() external override{
-        require(followerTable[msg.sender] != true);
+    function follow() external override {
+        require(followerTable[msg.sender] != true && !isInBlacklist(msg.sender));
         immatureFollowerTable[msg.sender] = uint64(block.timestamp);
     }
     // Unfollow this contract's owner.
-    function unfollow() external override{
+    function unfollow() external override {
         delete immatureFollowerTable[msg.sender];
         delete followerTable[msg.sender];
     }
@@ -123,7 +123,7 @@ contract SpaceLogic is IMySpace {
     // }
     // Set the warmup time for new followers: how many hours after becoming a follower can she comment? owner-only
     //todo: change numHours to numSeconds
-    function setWarmupTime(uint numSeconds) external override{
+    function setWarmupTime(uint numSeconds) external override {
         require(msg.sender == owner && numSeconds != 0);
         warmupTime = numSeconds;
     }
@@ -154,28 +154,19 @@ contract SpaceLogic is IMySpace {
     // Vote for an option. followers-only.
     //todo: optionId should be [0,optionCount)
     function vote(uint64 voteId, uint8 optionId, uint coinAmount) external override {
-        bool isFollower;
-        if (followerTable[msg.sender] == true) {
-            isFollower = true;
-        } else if (immatureFollowerTable[msg.sender] + warmupTime > block.timestamp) {
-            isFollower = true;
-            followerTable[msg.sender] = true;
-            delete immatureFollowerTable[msg.sender];
-        }
-        if (isFollower) {
-            uint info = voteTable[voteId];
-            uint64 endTime = uint64(info >> 16);
-            uint8 config = uint8(info >> 8);
-            uint8 optionCount = uint8(info);
-            if (endTime != 0 && block.timestamp < endTime && optionId < optionCount) {
-                //todo: not like a on chain gov vote, pay coins is not refund to user, voteCoin may be address zero always;
-                if ((config & 0x01 == 0x01) || voteCoin == address(0)) {
-                    voteTallyTable[keccak256(abi.encode(voteId << 8 | optionId))] += 1;
-                    emit Vote(msg.sender, voteId, optionId, 1);
-                } else if (IERC20(voteCoin).transferFrom(msg.sender, owner, coinAmount)) {
-                    voteTallyTable[keccak256(abi.encode(voteId << 8 | optionId))] += coinAmount;
-                    emit Vote(msg.sender, voteId, optionId, coinAmount);
-                }
+        require(isFollower(msg.sender));
+        uint info = voteTable[voteId];
+        uint64 endTime = uint64(info >> 16);
+        uint8 config = uint8(info >> 8);
+        uint8 optionCount = uint8(info);
+        if (endTime != 0 && block.timestamp < endTime && optionId < optionCount) {
+            //todo: not like a on chain gov vote, pay coins is not refund to user, voteCoin may be address zero always;
+            if ((config & 0x01 == 0x01) || voteCoin == address(0)) {
+                voteTallyTable[keccak256(abi.encode(voteId << 8 | optionId))] += 1;
+                emit Vote(msg.sender, voteId, optionId, 1);
+            } else if (IERC20(voteCoin).transferFrom(msg.sender, owner, coinAmount)) {
+                voteTallyTable[keccak256(abi.encode(voteId << 8 | optionId))] += coinAmount;
+                emit Vote(msg.sender, voteId, optionId, coinAmount);
             }
         }
     }
@@ -197,33 +188,77 @@ contract SpaceLogic is IMySpace {
     }
 
     // Publish a new Ad. owner-only. Can delete an old Ad to save gas and reclaim coins at the same time.
-    //todo:
-//    function publishAd(string memory detail, uint numAudience, uint numRejector, uint coinsPerAudience, address coinType, uint[] calldata bloomfilter, uint endTime, uint64 deleteOldId) external override returns (uint64) {
-//        uint64 id = nextAdId;
-//        nextAdId++;
-//        return id;
-//    }
-//    // Click an Ad and express whether I am interested. followers-only
-//    function clickAd(uint id, bool interested) external override{
-//
-//    }
-//    // Delete an old Ad to save gas and reclaim coins
-//    function deleteAd(uint id) external override{
-//
-//    }
-//    // Returns the Id of the next Ad
-//    function getNextAdId() external view override returns (uint64) {
-//        return nextAdId;
-//    }
+    function publishAd(string memory detail, uint numAudience, uint coinsPerAudience, address coinType, uint[] calldata bloomFilter, uint endTime, uint64 deleteOldId) external override returns (uint64) {
+        //coinType should impl IERC20
+        require(msg.sender == owner && endTime > block.timestamp && coinType != address(0));
+        uint64 id = nextAdId;
+        AdInfo memory info;
+        info.coinType = coinType;
+        info.numAudience = numAudience;
+        info.coinsPerAudience = coinsPerAudience;
+        info.endTime = endTime;
+        adTable[id] = info;
+        require(IERC20(coinType).transferFrom(msg.sender, address(this), numAudience * coinsPerAudience));
+        emit PublishAd(id, detail, numAudience, coinsPerAudience, coinType, bloomFilter, endTime);
+        if (deleteOldId < id) {
+            AdInfo memory oldInfo = adTable[deleteOldId];
+            if (oldInfo.endTime != 0) {
+                //not check if old ad if end or not
+                delete adTable[deleteOldId];
+                //not check result
+                IERC20(oldInfo.coinType).transfer(msg.sender, oldInfo.coinsPerAudience * oldInfo.numAudience);
+            }
+        }
+        nextAdId++;
+        return id;
+    }
+    // Click an Ad and express whether I am interested. followers-only
+    function clickAd(uint id, bool interested) external override {
+        require(isFollower(msg.sender));
+        AdInfo memory info = adTable[id];
+        require(info.endTime > block.timestamp);
+        if (!interested && info.numAudience > 0) {
+            IERC20(info.coinType).transfer(msg.sender, info.coinsPerAudience);
+            info.numAudience--;
+            adTable[id] = info;
+        }
+        emit ClickAd(id, msg.sender, interested);
+    }
+    // Delete an old Ad to save gas and reclaim coins
+    function deleteAd(uint id) external override {
+        require(msg.sender == owner);
+        AdInfo memory oldInfo = adTable[id];
+        if (oldInfo.endTime != 0) {
+            //not check if old ad if end or not
+            delete adTable[id];
+            //not check result
+            IERC20(oldInfo.coinType).transfer(msg.sender, oldInfo.coinsPerAudience * oldInfo.numAudience);
+        }
+    }
+    // Returns the Id of the next Ad
+    function getNextAdId() external view override returns (uint64) {
+        return nextAdId;
+    }
 
     function setVoteCoin(address coin) external {
         voteCoin = coin;
     }
 
-    function getVoteCoin() external view  returns (address) {
+    function getVoteCoin() external view returns (address) {
         return voteCoin;
     }
-}
+
+    function isFollower(address user) internal returns (bool) {
+        bool isFollower;
+        if (followerTable[user] == true) {
+            isFollower = true;
+        } else if (immatureFollowerTable[user] + warmupTime > block.timestamp) {
+            isFollower = true;
+            followerTable[user] = true;
+            delete immatureFollowerTable[user];
+        }
+        return isFollower;
+    }
 
 contract Space {
     address private owner;

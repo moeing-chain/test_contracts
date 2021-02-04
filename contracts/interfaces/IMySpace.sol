@@ -16,7 +16,7 @@ interface IMySpace {
     event Vote(address indexed voter, uint voteId, uint optionId, uint coinAmount);
 
     // A new Advertisement was published. Totally numAudience*coinsPerAudience of coins were reserved for the audiences who may be not interested with this Ad. The followers selected by 'bloomfilter' can click this Ad. This Ad keeps effective until 'endTime'
-    event PublishAd(uint64 indexed id, string detail, uint numAudience, uint coinsPerAudience, address coinType, uint[] bloomfilter, uint endTime);
+    event PublishAd(uint64 indexed id, string detail, uint numAudience, uint coinsPerAudience, address coinType, uint[] bloomFilter, uint endTime);
     // An 'audience' clicked at an Ad with 'id' and expressed whether she is interested. If she is not interested, she gets some coins for compensation.
     event ClickAd(uint64 indexed id, address indexed audience, bool interested);
 
@@ -66,13 +66,13 @@ interface IMySpace {
     // Returns the Id of the next vote
     function getNextVoteId() external view returns (uint64);
 
-    // Publish a new Ad. operator-only. Can delete an old Ad to save gas and reclaim coins at the same time.
-//    function publishAd(string memory detail, uint numAudience, uint numRejector, uint coinsPerAudience, address coinType, uint[] calldata bloomfilter, uint endTime, uint64 deleteOldId) external returns (uint64);
-//    // Click an Ad and express whether I am interested. followers-only
-//    function clickAd(uint id, bool interested) external;
-//    // Delete an old Ad to save gas and reclaim coins
-//    function deleteAd(uint id) external;
-//    // Returns the Id of the next Ad
-//    function getNextAdId() external view returns (uint64);
+    // Publish a new Ad. owner-only. Can delete an old Ad to save gas and reclaim coins at the same time.
+    function publishAd(string memory detail, uint numAudience, uint coinsPerAudience, address coinType, uint[] calldata bloomFilter, uint endTime, uint64 deleteOldId) external returns (uint64);
+    // Click an Ad and express whether I am interested. followers-only
+    function clickAd(uint id, bool interested) external;
+    // Delete an old Ad to save gas and reclaim coins
+    function deleteAd(uint id) external;
+    // Returns the Id of the next Ad
+    function getNextAdId() external view returns (uint64);
 }
 
