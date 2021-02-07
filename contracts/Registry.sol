@@ -24,7 +24,7 @@ contract RegistryLogic is IRegistry {
     mapping(address => bakAddressInfo) private ownerToGuardianBak;
     mapping(bytes32 => address) public spaceTable;
 
-    //todo: support change name
+    //not support change name
     function register(bytes32 accountName, address successor, address guardian) external override returns (bool) {
         if (nameToOwner[accountName] == address(0)) {
             nameToOwner[accountName] = msg.sender;
